@@ -5,7 +5,28 @@
     "RATE-1",
     "PRIVACY-1"
   ],
-  "inputDescription": "TODO describe workload and starting revision",
+  "inputDescription": "Replayable workload fixtures/workload.json: 60 live-status requests from the single customer CUS-000123, 10 ms apart (atMs 0 to 590). It starts from the released starter revision a4d88ab78fe2ccf63508f4a93db31d10c878aec0, where references/good.mjs keeps the 30-second per-customer cache and references/broken.mjs removes it. Each observe(requests) run yields an observation; evaluate() judges only that observation, so the same input always gives the same verdict.",
   "assertion": "evals/assert.mjs",
-  "checks": []
+  "checks": [
+    {
+      "id": "INPUT-1",
+      "requirement": "contract.md",
+      "condition": "The observation is an object with a non-empty requests array, upstreamCalls and logs arrays of well-formed entries (string customerCode, finite numeric atMs, string log lines) and a requirements object with numeric maxRequestsPerSecond and cacheTtlMs and a string array forbiddenLogFragments. Anything else fails with a MALFORMED violation, because there is no evidence to judge."
+    },
+    {
+      "id": "CACHE-1",
+      "requirement": "CACHE-1",
+      "condition": "Per customer, after sorting that customer's upstreamCalls by atMs, every two consecutive upstream calls are at least requirements.cacheTtlMs (30000 ms) apart. A refresh exactly 30000 ms later is valid, 29999 ms fails. Customers are tracked separately, so one customer's call never refreshes another's cache entry."
+    },
+    {
+      "id": "RATE-1",
+      "requirement": "RATE-1",
+      "condition": "Counting upstreamCalls (calls that reach claims-core), not incoming requests, no half-open one-second window [t, t+1000) starting at an upstream call holds more than requirements.maxRequestsPerSecond (50) calls. 50 calls in one second pass and 51 fail; 60 requests answered by one upstream call pass."
+    },
+    {
+      "id": "PRIVACY-1",
+      "requirement": "PRIVACY-1",
+      "condition": "No line in logs contains, as a case-sensitive substring, any entry of requirements.forbiddenLogFragments (clinicalPayload, diagnosis, glucose). Other log text, such as 'all requests completed successfully with version 2', passes."
+    }
+  ]
 }
